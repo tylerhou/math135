@@ -11,57 +11,52 @@ namespace Set
   infix:50 " ∈ " => ElementOf
   infix:40 " ∉ " => (fun x y => ¬ (ElementOf x y))
 
-  def Nonempty (A : Set) : Prop := ∃ (x : Set), x ∈ A
-  def SubsetOf (A B : Set) : Prop := ∀ (x : Set), x ∈ A → x ∈ B
+  def Nonempty A := ∃ x, x ∈ A
+  def SubsetOf A B := ∀ x, x ∈ A → x ∈ B
 
-  axiom extensionality : ∀ (A B : Set), (∀ (x : Set), x ∈ A ↔ x ∈ B) → A = B
+  axiom extensionality : ∀ A B , (∀ x, x ∈ A ↔ x ∈ B) → A = B
 
-  axiom empty : ∃ (Z : Set), ∀ (x : Set), x ∉ Z
-  noncomputable def Empty : Set := Classical.choose empty
-  theorem Empty.Defn : ∀ (x : Set), x ∉ Empty := Classical.choose_spec empty
+  axiom empty : ∃ Z, ∀ x, x ∉ Z
+  noncomputable def Empty := Classical.choose empty
+  theorem Empty.Defn : ∀ x, x ∉ Empty := Classical.choose_spec empty
 
-  axiom pairing : ∀ (A B : Set), ∃ (S : Set), (∀ (x : Set), x ∈ S ↔ (x = A ∨ x = B))
-  noncomputable def Pair (A B : Set) : Set := Classical.choose (pairing A B)
-  theorem Pair.Defn (A B : Set) : (∀ (x : Set), x ∈ Pair A B ↔ (x = A ∨ x = B)) :=
+  axiom pairing : ∀ A B, ∃ S, (∀ x, x ∈ S ↔ (x = A ∨ x = B))
+  noncomputable def Pair A B := Classical.choose (pairing A B)
+  theorem Pair.Defn A B : ∀ x, x ∈ Pair A B ↔ (x = A ∨ x = B) :=
     Classical.choose_spec (pairing A B)
 
-  axiom union : ∀ (A : Set), ∃ (S : Set), (∀ (x : Set), x ∈ S ↔ (∃ (y : Set), x ∈ y ∧ y ∈ A))
-  noncomputable def Union (A : Set) : Set := Classical.choose (union A)
-  theorem Union.Defn (A : Set) : (∀ (x : Set), x ∈ Union A ↔ (∃ (y : Set), x ∈ y ∧ y ∈ A)) :=
+  axiom union : ∀ A , ∃ S, (∀ x, x ∈ S ↔ (∃ y, x ∈ y ∧ y ∈ A))
+  noncomputable def Union A := Classical.choose (union A)
+  theorem Union.Defn A : (∀ x, x ∈ Union A ↔ (∃ y, x ∈ y ∧ y ∈ A)) :=
     Classical.choose_spec (union A)
 
 
-  -- Homework assigned on Fri Jan 23.
-  -- I did ask an LLM about syntax / Lean standard library questions.
-  -- I hand-wrote all code below. https://gemini.google.com/share/46deb4590f01
-  theorem union₂ :
-    ∀ (A B : Set), ∃ (S : Set), (∀ (x : Set), x ∈ S ↔ (x ∈ A ∨ x ∈ B)) :=
-    (fun (A B : Set) =>
-      let P := Pair A B
-      Exists.intro (Union P) (fun x => Iff.trans
-        -- x ∈ (Union P) ↔ (∃ y, x ∈ y ∧ y ∈ P)
-        (Union.Defn P x)
-        -- (∃ y, x ∈ y ∧ y ∈ P) ↔ (x ∈ A ∨ x ∈ B)
-        (Iff.intro
-          -- (∃ y, x ∈ y ∧ y ∈ P) → (x ∈ A ∨ x ∈ B)
-          (fun (ey : ∃ y, x ∈ y ∧ y ∈ P) =>
-            Exists.elim ey (fun y and =>
-              let or := (Pair.Defn A B y).mp and.right
-              Or.elim or
-                (fun eq_A => Or.inl (Eq.subst eq_A and.left))
-                (fun eq_B => Or.inr (Eq.subst eq_B and.left))
-            )
-          )
-          -- (∃ y, x ∈ y ∧ y ∈ P) ← (x ∈ A ∨ x ∈ B)
-          (fun or => Or.elim or
-            (fun in_A => Exists.intro A (
-              And.intro in_A ((Pair.Defn A B A).mpr (Or.inl (Eq.refl A)))
-            ))
-            (fun in_B => Exists.intro B (
-              And.intro in_B ((Pair.Defn A B B).mpr (Or.inr (Eq.refl B)))
-            ))
-          )
-        )
-      )
-    )
+ noncomputable def union₂ (A B) := Union (Pair A B)
+ theorem Union₂.Prop : ∀ (A B), (∀ x,
+  (x ∈ (union₂ A B)) ↔ (x ∈ A ∨ x ∈ B)) := by
+  intro A B x
+  constructor
+  . intro h
+    rw [union₂, Union.Defn] at h
+    rcases h with ⟨y, l, r⟩
+    rw [Pair.Defn] at r
+    rcases r with (h | h)
+    . rw [h] at l
+      exact Or.inl l
+    . rw [h] at l
+      exact Or.inr l
+  . intro h
+    rcases h with (h | h)
+    . rw [union₂, Union.Defn]
+      exists A
+      have g : A ∈ Pair A B := by
+        rw [Pair.Defn]
+        exact Or.inl rfl
+      exact ⟨h, g⟩
+    . rw [union₂, Union.Defn]
+      exists B
+      have g : B ∈ Pair A B := by
+        rw [Pair.Defn]
+        exact Or.inr rfl
+      exact ⟨h, g⟩
 end Set
