@@ -8,3 +8,7 @@ name = "Math135"
 [[lean_exe]]
 name = "math135"
 root = "Main"
+
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4.git"

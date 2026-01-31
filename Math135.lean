@@ -1,62 +1,44 @@
 -- This module serves as the root of the `Math135` library.
 -- Import modules here that should be built as part of the library.
+import Mathlib.Tactic
+
 import Math135.Basic
 
-namespace Set
-  -- Basic definitions and theorems from
-  -- https://edwardwibowo.com/blog/formalizing-axiomatic-set-theory-in-lean/
-  axiom Set : Type
+class SetTheory where
+  (Set : Type)
+  ElementOf : Set -> Set -> Prop
 
-  axiom ElementOf : Set -> Set -> Prop
-  infix:50 " ∈ " => ElementOf
-  infix:40 " ∉ " => (fun x y => ¬ (ElementOf x y))
-
-  def Nonempty A := ∃ x, x ∈ A
-  def SubsetOf A B := ∀ x, x ∈ A → x ∈ B
-
-  axiom extensionality : ∀ A B , (∀ x, x ∈ A ↔ x ∈ B) → A = B
-
-  axiom empty : ∃ Z, ∀ x, x ∉ Z
-  noncomputable def Empty := Classical.choose empty
-  theorem Empty.Defn : ∀ x, x ∉ Empty := Classical.choose_spec empty
-
-  axiom pairing : ∀ A B, ∃ S, (∀ x, x ∈ S ↔ (x = A ∨ x = B))
-  noncomputable def Pair A B := Classical.choose (pairing A B)
-  theorem Pair.Defn A B : ∀ x, x ∈ Pair A B ↔ (x = A ∨ x = B) :=
-    Classical.choose_spec (pairing A B)
-
-  axiom union : ∀ A , ∃ S, (∀ x, x ∈ S ↔ (∃ y, x ∈ y ∧ y ∈ A))
-  noncomputable def Union A := Classical.choose (union A)
-  theorem Union.Defn A : (∀ x, x ∈ Union A ↔ (∃ y, x ∈ y ∧ y ∈ A)) :=
-    Classical.choose_spec (union A)
+infix:50 " ∈ " => SetTheory.ElementOf
+infix:40 " ∉ " => (fun x y => ¬ (SetTheory.ElementOf x y))
 
 
- noncomputable def union₂ (A B) := Union (Pair A B)
- theorem Union₂.Prop : ∀ (A B), (∀ x,
-  (x ∈ (union₂ A B)) ↔ (x ∈ A ∨ x ∈ B)) := by
+def nonempty [S : SetTheory] A := ∃ x, x ∈ A
+def subset [S : SetTheory] A B := ∀ x, x ∈ A → x ∈ B
+
+infix:50 " ⊆ " => subset
+
+class ZF extends SetTheory where
+  (extensionality : ∀ A B , (∀ x, x ∈ A ↔ x ∈ B) → A = B)
+
+  (empty : Set)
+  (empty_prop : ∀ x, x ∉ empty)
+
+  (pair : Set -> Set -> Set)
+  (pair_prop : ∀ A B, (∀ x, x ∈ (pair A B) ↔ (x = A ∨ x = B)))
+
+  (union : Set -> Set)
+  (union_prop : ∀ A, (∀ x, x ∈ (union A) ↔ (∃ y, x ∈ y ∧ y ∈ A)))
+
+variable [ZF : ZF]
+
+def union₂ (A B) := ZF.union (ZF.pair A B)
+infix:100 " ∪ " => union₂
+
+theorem union₂_prop : ∀ A B, ∀ x, (x ∈ (A ∪ B)) ↔ (x ∈ A ∨ x ∈ B) := by
   intro A B x
+  simp only [union₂, ZF.union_prop, ZF.pair_prop]
   constructor
-  . intro h
-    rw [union₂, Union.Defn] at h
-    rcases h with ⟨y, l, r⟩
-    rw [Pair.Defn] at r
-    rcases r with (h | h)
-    . rw [h] at l
-      exact Or.inl l
-    . rw [h] at l
-      exact Or.inr l
-  . intro h
-    rcases h with (h | h)
-    . rw [union₂, Union.Defn]
-      exists A
-      have g : A ∈ Pair A B := by
-        rw [Pair.Defn]
-        exact Or.inl rfl
-      exact ⟨h, g⟩
-    . rw [union₂, Union.Defn]
-      exists B
-      have g : B ∈ Pair A B := by
-        rw [Pair.Defn]
-        exact Or.inr rfl
-      exact ⟨h, g⟩
-end Set
+  . rintro ⟨y, hy, rfl | rfl⟩ <;> . simp [*]
+  . rintro (h | h)
+    . exact ⟨A, h, Or.inl rfl⟩
+    . exact ⟨B, h, Or.inr rfl⟩
