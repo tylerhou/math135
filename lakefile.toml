@@ -1,13 +1,9 @@
 name = "math135"
 version = "0.1.0"
-defaultTargets = ["math135"]
+defaultTargets = ["Math135"]
 
 [[lean_lib]]
 name = "Math135"
-
-[[lean_exe]]
-name = "math135"
-root = "Main"
 
 [[require]]
 name = "mathlib"
